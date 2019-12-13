@@ -2,9 +2,15 @@
 
 __all__ = ["index", "modules", "custom_doc_links", "git_url"]
 
-index = {}
+index = {"download_file": "01_data.ipynb",
+         "get_files": "01_data.ipynb",
+         "num_files": "01_data.ipynb",
+         "path": "02_preprocess.ipynb",
+         "trn_sample": "02_preprocess.ipynb",
+         "tst_sample": "02_preprocess.ipynb"}
 
-modules = ["imports.py"]
+modules = ["data/core.py",
+           "data/preprocess.py"]
 
 git_url = "https://github.com/amaarora/face_detector/tree/master/"
 
