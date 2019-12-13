@@ -4,10 +4,7 @@ __all__ = ["index", "modules", "custom_doc_links", "git_url"]
 
 index = {"download_file": "01_data.ipynb",
          "get_files": "01_data.ipynb",
-         "num_files": "01_data.ipynb",
-         "path": "02_preprocess.ipynb",
-         "trn_sample": "02_preprocess.ipynb",
-         "tst_sample": "02_preprocess.ipynb"}
+         "num_files": "01_data.ipynb"}
 
 modules = ["data/core.py",
            "data/preprocess.py"]
