@@ -1,4 +1,5 @@
-# nbdev template
+# FakeDetector
 
-Use this template to more easily create your nbdev project.
+Inspired from kaggle.com/c/deepfake-detection-challenge
 
+FakeDetector can be used to detect fake images/videos generated using latest AI techniques such as GANs/FaceSwap/Deepfakes etc
