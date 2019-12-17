@@ -20,8 +20,8 @@ import torch.nn as nn
 from PIL import Image as pil_image
 from tqdm import tqdm
 from pdb import set_trace
-from network.models import model_selection
-from dataset.transform import xception_default_data_transforms
+from classification.network.models import model_selection
+from classification.dataset.transform import xception_default_data_transforms
 
 
 def get_boundingbox(face, width, height, scale=1.3, minsize=None):
