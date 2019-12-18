@@ -5,3 +5,4 @@ __all__ = []
 #Cell
 from ..imports import *
 from .core import *
+from classification.detect_from_video import *
