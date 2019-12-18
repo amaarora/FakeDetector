@@ -20,8 +20,8 @@ import torch.nn as nn
 from PIL import Image as pil_image
 from tqdm import tqdm
 from pdb import set_trace
-from classification.network.models import model_selection
-from classification.dataset.transform import xception_default_data_transforms
+from network.models import model_selection
+from dataset.transform import xception_default_data_transforms
 
 
 def get_boundingbox(face, width, height, scale=1.3, minsize=None):
@@ -149,7 +149,7 @@ def test_full_image_network(video_path, model_path, output_path,
     assert start_frame < num_frames - 1
     end_frame = end_frame if end_frame else num_frames
     pbar = tqdm(total=end_frame-start_frame)
-
+    labels={"fake":0, "real":0}
     while reader.isOpened():
         _, image = reader.read()
         if image is None:
@@ -191,6 +191,8 @@ def test_full_image_network(video_path, model_path, output_path,
             w = face.right() - x
             h = face.bottom() - y
             label = 'fake' if prediction == 1 else 'real'
+            labels[label] += 1
+            if labels[label]/num_frames > 0.6: return labels
             color = (0, 255, 0) if prediction == 0 else (0, 0, 255)
             output_list = ['{0:.2f}'.format(float(x)) for x in
                            output.detach().cpu().numpy()[0]]
