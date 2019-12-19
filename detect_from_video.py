@@ -165,12 +165,12 @@ def test_full_image_network(video_folder_path, model_path, output_path, fns,
                 label = 'fake' if prediction == 1 else 'real'
                 labels[label]+=1
                 if label == "fake" and (labels["fake"]/num_frames)>0.2:
-                    preds[video_fn]=output.max()
+                    preds[video_fn]=output.max().numpy()
                 elif label == "real" and (labels["real"]/num_frames)>0.75: 
-                    preds[video_fn]=output.max()
+                    preds[video_fn]=output.max().numpy()
             color = (0, 255, 0) if prediction == 0 else (0, 0, 255)
-        if frame_num >= end_frame:
-            break
+            if frame_num >= end_frame:
+                break
     pbar.close()
     return preds
 
