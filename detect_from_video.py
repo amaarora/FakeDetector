@@ -101,8 +101,7 @@ def predict_with_model(image, model, post_function=nn.Softmax(dim=1),
 
     return int(prediction), output
 
-
-def test_full_image_network(video_path, model_path, output_path,
+def test_full_image_network(video_folder_path, model_path, output_path, fns,
                             start_frame=0, end_frame=None, cuda=True):
     """
     Reads a video and evaluates a subset of frames with the a detection network
@@ -116,106 +115,64 @@ def test_full_image_network(video_path, model_path, output_path,
     :param cuda: enable cuda
     :return:
     """
-    print('Starting: {}'.format(video_path))
-
-    # Read and write
-    reader = cv2.VideoCapture(video_path)
-    video_fn = video_path.split('/')[-1].split('.')[0]+'.avi'
+    preds = {}
     os.makedirs(output_path, exist_ok=True)
-    fourcc = cv2.VideoWriter_fourcc(*'MJPG')
-    fps = reader.get(cv2.CAP_PROP_FPS)
-    num_frames = int(reader.get(cv2.CAP_PROP_FRAME_COUNT))
-    writer = None
+    # Load pretrained model
+    model = torch.load(model_path)
+    print('Model found in {}'.format(model_path))
+    if cuda: model = model.cuda()
 
-    # Face detector
-    face_detector = dlib.get_frontal_face_detector()
-    # Load model
-    model, *_ = model_selection(modelname='xception', num_out_classes=2)
-    if model_path is not None:
-        model = torch.load(model_path)
-        print('Model found in {}'.format(model_path))
-    else:
-        print('No model found, initializing random model.')
-    if cuda:
-        model = model.cuda()
-
-    # Text variables
-    font_face = cv2.FONT_HERSHEY_SIMPLEX
-    thickness = 2
-    font_scale = 1
-
-    # Frame numbers and length of output video
-    frame_num = 0
-    assert start_frame < num_frames - 1
-    end_frame = end_frame if end_frame else num_frames
-    pbar = tqdm(total=end_frame-start_frame)
-    labels={"fake":0, "real":0}
-    while reader.isOpened():
-        _, image = reader.read()
-        if image is None:
-            break
-        frame_num += 1
-
-        if frame_num < start_frame:
-            continue
-        pbar.update(1)
-
-        # Image size
-        height, width = image.shape[:2]
-
-        # Init output writer
-        if writer is None:
-            writer = cv2.VideoWriter(join(output_path, video_fn), fourcc, fps,
-                                     (height, width)[::-1])
-
-        # 2. Detect with dlib
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        faces = face_detector(gray, 1)
-        if len(faces):
-            # For now only take biggest face
-            face = faces[0]
-
-            # --- Prediction ---------------------------------------------------
-            # Face crop with dlib and bounding box scale enlargement
-            x, y, size = get_boundingbox(face, width, height)
-            cropped_face = image[y:y+size, x:x+size]
-
-            # Actual prediction using our model
-            prediction, output = predict_with_model(cropped_face, model,
-                                                    cuda=cuda)
-            # ------------------------------------------------------------------
-
-            # Text and bb
-            x = face.left()
-            y = face.top()
-            w = face.right() - x
-            h = face.bottom() - y
-            label = 'fake' if prediction == 1 else 'real'
-            labels[label] += 1
-            if labels[label]/num_frames > 0.6: return labels
+    for fn in fns: 
+        start_frame=0
+        video_path = f"{video_folder_path}/{fn}"
+        print('Starting: {}'.format(video_path))
+        # Read and write
+        reader = cv2.VideoCapture(video_path)
+        fps = reader.get(cv2.CAP_PROP_FPS)
+        video_fn = video_path.split('/')[-1]
+        print(f"Currently predicting for {video_fn}")
+        num_frames = int(reader.get(cv2.CAP_PROP_FRAME_COUNT))
+        writer = None
+        # Face detector
+        face_detector = dlib.get_frontal_face_detector()
+        # Frame numbers and length of output video
+        frame_num = 0
+        assert start_frame < num_frames - 1
+        end_frame = end_frame if end_frame else num_frames
+        pbar = tqdm(total=end_frame-start_frame)
+        labels={"fake":0, "real":0}
+        while reader.isOpened():
+            _, image = reader.read()
+            if image is None: break
+            frame_num += 1
+            if frame_num < start_frame: continue
+            pbar.update(1)
+            # Image size
+            height, width = image.shape[:2]
+            # 2. Detect with dlib
+            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            faces = face_detector(gray, 1)
+            if len(faces):
+                face = faces[0]
+                x, y, size = get_boundingbox(face, width, height)
+                cropped_face = image[y:y+size, x:x+size]
+                prediction, output = predict_with_model(cropped_face, model,
+                                                        cuda=cuda)
+                x = face.left()
+                y = face.top()
+                w = face.right() - x
+                h = face.bottom() - y
+                label = 'fake' if prediction == 1 else 'real'
+                labels[label]+=1
+                if label == "fake" and (labels["fake"]/num_frames)>0.2:
+                    preds[video_fn]=output.max()
+                elif label == "real" and (labels["real"]/num_frames)>0.75: 
+                    preds[video_fn]=output.max()
             color = (0, 255, 0) if prediction == 0 else (0, 0, 255)
-            output_list = ['{0:.2f}'.format(float(x)) for x in
-                           output.detach().cpu().numpy()[0]]
-            cv2.putText(image, str(output_list)+'=>'+label, (x, y+h+30),
-                        font_face, font_scale,
-                        color, thickness, 2)
-            # draw box over face
-            cv2.rectangle(image, (x, y), (x + w, y + h), color, 2)
-
         if frame_num >= end_frame:
             break
-
-        # Show
-        # cv2.imshow('test', image)
-        # cv2.waitKey(33)     # About 30 fps
-        writer.write(image)
     pbar.close()
-    if writer is not None:
-        writer.release()
-        print('Finished! Output saved under {}'.format(output_path))
-    else:
-        print('Input video file was empty')
-
+    return preds
 
 if __name__ == '__main__':
     p = argparse.ArgumentParser(
